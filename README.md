@@ -1,109 +1,77 @@
-<p align="center">
-  <img height="150px" src="docs/tagline.svg">
-</p>
+# CIRA: Canvas Information Retrieval Assistant
 
----
+CIRA is a Retrieval Augmented Generation (RAG) LLM Canvas assistant with self-evaluation and entropy-based hallucination detection. It helps students find relevant course information and presents it in a consistent, interpretable style that suits the individual. It is designed to run in a university environment with limited resources compared with a large technology company, while still producing accurate and relevant responses. The goal is to make course and assignment information easier to reach and to cut the time students spend on simple navigation and troubleshooting.
 
-Marcel is a lightweight, open-source conversational agent designed to support prospective students with admission-related inquiries. It aims to provide fast and personalized responses while reducing the workload of university support staff. The system is engineered for easy deployment in resource-constrained academic settings.
+Our rationale is that an interactive assistant can adapt to the situational needs of the student, which is beyond the capabilities of the Canvas application.
 
-**More information:** [Paper](https://aclanthology.org/2025.emnlp-demos.13/) | [Demo video](https://youtu.be/uLCB2R6szz4)
+CIRA is built on [Marcel](https://github.com/aix-group/marcel-chat), an open-source university chatbot (see [Credits](#credits)).
 
-This repository provides the application related code. For experiments related to the EMNLP paper, please refer to the [`marcel-emnlp-experiments`](https://github.com/aix-group/marcel-emnlp-experiments) repository.
+## Features
+
+- **Answers grounded in course material.** CIRA retrieves passages from a knowledge base (course PDFs, slides, documents and a Penn State Canvas FAQ) and answers only from them. If the answer isn't there, it says so instead of guessing.
+- **FAQ retriever.** Frequently asked questions are mapped to the documents that answer them, so common questions reliably find the right source.
+- **Hallucination detection with Kernel Language Entropy (KLE).** For every question, CIRA generates several extra answers in the background and checks whether they agree with each other. If they disagree, the answer gets a warning asking the student to double-check it. Based on [Nikitin et al., NeurIPS 2024](https://arxiv.org/abs/2405.20003).
+- **Source attribution.** Each answer links to the documents it was based on ("Where can I verify this answer?").
+- **Feedback.** Students can rate answers (thumbs up/down) and whole conversations.
+- **Admin interface.** Usage statistics, a list of conversations, and the hallucination score and sampled answers for every response.
 
 ## Quickstart
 
-### Clone repository
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) and an API key for an OpenAI-compatible LLM provider. We use [Groq](https://console.groq.com/keys), which has a free tier.
+
+### 1. Clone the repository
 
 ```sh
-git clone git@github.com:aix-group/marcel-chat.git
+git clone https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13.git
+cd https-github.com-Navinn88-340W-Group-13
 ```
 
-### Configure environment
+### 2. Create the `.env` file
 
-Create a `.env` file based on the template and set the required variables.
+Create a file called `.env` in the project root (next to `docker-compose.yaml`) with the following content, and fill in the values marked `<...>`:
 
 ```sh
-cp .env.example .env
-vi .env # Please refer to the .env file for configuration options
-```
-### Data
-Simplified data is available in the [data folder](./data/)
+# --- Data (paths inside the Docker container) ---
+DATA_ROOT=/data
+DATA_PATH=knowledgebase.jsonl
+FAQ_PATH=faq.json
+ADMINS_PATH=admins.json
 
-The **knowledge base** defines the set of RAG sources used for your task. It must be a strictly valid and well-formatted .jsonl file. Each entry is a JSON object and must contain the following keys:
-```url```,  ```content```, ```favicon``` and 
+# --- Admin login ---
+# Generate a secret with: openssl rand -hex 32
+SECRET_KEY=<64 random hex characters>
+ACCESS_TOKEN_EXPIRE_MINUTES=60
 
-```og```: Metadata extracted via the Open Graph Protocol. This field is a dictionary and typically includes following keys:
-  - ```og:title```: Title of the page
-  - ```og:description```: Short description of the page
-  - ```og:type```: Type of the object (e.g., "website", "article")
-  - ```og:url```: Canonical URL (should match or normalize url)
-  - ```og:image```: Image URL used for preview
-  - ```og:image:type```: MIME type of the preview image
+# --- LLM (any OpenAI-compatible API; Groq shown here) ---
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=<your Groq key, starts with gsk_>
+MODEL_NAME=openai/gpt-oss-120b
 
-```og``` can also be an empty dictionary.
-<details>
-<summary><b>Knowledge base Example</b></summary>
+# --- Database (MariaDB, runs in Docker) ---
+MARIADB_DATABASE=marcel
+MARIADB_USER=marcel
+MARIADB_PASSWORD=<choose a password>
+MARIADB_ROOT_PASSWORD=<choose another password>
+DATABASE_URI=mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@database:3306/${MARIADB_DATABASE}
 
-```json
-{
-    "url": "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/application-for-a-masters-programme/master",
-    "content": "# Master\n\n  \n\n\n\n\n",
-    "og": {
-        "og:site_name": "Philipps-Universit\u00e4t Marburg",
-        "og:title": "Master",
-        "og:type": "website",
-        "og:description": "",
-        "og:url": "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/application-for-a-masters-programme/master",
-        "og:image": "https://www.uni-marburg.de/@@site-logo/favicon.ico",
-        "og:image:type": "image/x-icon"
-    },
-    "favicon": "https://www.uni-marburg.de/++theme++plonetheme.unimr/layout/favicon.ico"
-}
+# --- Hallucination detection (KLE) ---
+KLE_ENABLED=true
+KLE_NUM_SAMPLES=3
+KLE_SAMPLE_MODEL=openai/gpt-oss-20b
+KLE_TEMPERATURE=1.0
+KLE_HEAT_T=1.0
+KLE_THRESHOLD=0.4
+KLE_NLI_MODEL=cross-encoder/nli-deberta-v3-small
+KLE_TIMEOUT=45
 ```
 
-</details>
-<br>
+Never commit `.env`: it contains your API key and passwords. It is already listed in `.gitignore`.
 
-If you like to use an **FAQ retriever**, you can build the **FAQ**. It must be a well-formatted ```.json``` file. Each object represents a single entry and must include the following keys: ```id```, ```question``` and ```sources```
-<details>
-<summary> <b>FAQ Example</b> </summary>
+All `KLE_` settings are explained in [Hallucination detection settings](#hallucination-detection-settings).
 
-```json
-[
-  {
-        "id": "faq-0001",
-        "question": "Does the Master Data Science have a minimum grade requirement?",
-        "sources": [
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/degree-programs/datasciencems",
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/application-for-a-masters-programme/eap/eap-data-science"
-        ]
-    }
-]
-```
+### 3. Generate certificates
 
-</details>
-<br>
-
-
-Plese refer to [backend instruction](./backend/README.md) for ```admins``` configuration
-<details>
-<summary><b>Admins Example</b></summary>
-
-```json
-[
-    {
-        "username": "admin",
-        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$FRnc99KQkJkRK+1RkTueyg$WbJ64c5iyXgHDy3nJyGqpEAyc1VsM8Q63ocF4XMRTF8"
-    }
-]
-
-```
-</details>
-
-
-### Generate certificates
-
-The application supports HTTPs-encrypted traffic. For development purposes, you can generate certificates like this:
+CIRA is served over HTTPS. For local development, create a self-signed certificate:
 
 ```sh
 mkdir certs
@@ -113,46 +81,152 @@ openssl req -x509 -nodes -days 365 \
   -keyout selfsigned.key \
   -out  selfsigned.crt \
   -subj "/CN=localhost"
-sudo chmod +r selfsigned.crt
-sudo chmod +r selfsigned.key
+cd ..
 ```
 
-### Start Containers
+On Windows (Git Bash), write `-subj "//CN=localhost"` with two slashes.
+
+### 4. Build and start
+
 ```sh
-docker compose --env-file .env up
+docker compose build
+docker compose --env-file .env up -d
 ```
-The app will be available at: https://localhost:8080/
 
-## Development instructions
-Refer to the following documents:
+The first build takes several minutes because it downloads the embedding model and the NLI model used for hallucination detection. After starting, the backend needs about a minute to load its models. Check progress with:
+
+```sh
+docker compose ps
+```
+
+When `backend` shows `(healthy)`, open **https://localhost:8080/**. Your browser will warn about the self-signed certificate; continue anyway.
+
+To stop everything:
+
+```sh
+docker compose down
+```
+
+### Troubleshooting
+
+- **`502 Bad Gateway` after rebuilding:** the `nginx` container still points at the old containers. Run `docker compose restart nginx`, or restart everything with `docker compose down` followed by `docker compose --env-file .env up -d`.
+- **`exec /app/scripts/entrypoint.sh: no such file or directory` on Windows:** the shell scripts were checked out with Windows line endings. The repository's `.gitattributes` prevents this for new clones. For an existing clone, delete `backend/scripts/*.sh`, run `git checkout -- backend/scripts`, and rebuild.
+- **`Invalid API key` or `model … does not exist`:** check `LLM_BASE_URL`, `LLM_API_KEY` and `MODEL_NAME` in `.env`. Providers retire models from time to time, so check their current model list.
+- **Changed `.env`?** Restart with `docker compose down` and `docker compose --env-file .env up -d`. Changing `KLE_NLI_MODEL` also needs `docker compose build backend`.
+- **See what the backend is doing:** `docker compose logs -f backend`
+
+## Hallucination detection settings
+
+When a question is answered from the knowledge base, CIRA generates `KLE_NUM_SAMPLES` extra answers to the same prompt. An NLI model then checks every pair for entailment or contradiction, and Kernel Language Entropy turns that into a score from 0 (all answers agree) to 1 (all answers contradict each other). Answers scoring at or above `KLE_THRESHOLD` get a warning. Answers where CIRA says it has no information are never flagged.
+
+| Variable | Default | Recommended (Groq free tier) | What it does |
+| --- | --- | --- | --- |
+| `KLE_ENABLED` | `false` | `true` | Turns hallucination detection on |
+| `KLE_NUM_SAMPLES` | `5` | `3` | Extra answers per question. More gives a more reliable score but uses more API tokens. |
+| `KLE_SAMPLE_MODEL` | same as `MODEL_NAME` | `openai/gpt-oss-20b` | Model for the extra answers. A different model from `MODEL_NAME` gets its own rate limit on Groq. |
+| `KLE_TEMPERATURE` | `1.0` | `1.0` | Sampling temperature for the extra answers. It must be high enough for an uncertain model to vary. |
+| `KLE_HEAT_T` | `1.0` | `1.0` | Heat kernel parameter. The paper uses 0.3 for short answers; 1.0 works better for CIRA's longer answers. |
+| `KLE_THRESHOLD` | `0.4` | `0.4` | Score (0 to 1) at or above which an answer is flagged |
+| `KLE_NLI_MODEL` | `cross-encoder/nli-deberta-v3-small` | default | NLI model that compares the answers. Changing it requires a rebuild. |
+| `KLE_TIMEOUT` | `45` | `45` | Seconds to wait for the score after the answer finishes |
+
+**Checking scores:**
+
+- `docker compose logs backend | grep "KLE entropy"` shows one line per scored answer, for example `KLE entropy=0.412 normalized=0.256 flagged=False samples=3`.
+- In the admin interface, every answer shows its score and the sampled answers, so you can see where they disagreed.
+
+**Limits on the Groq free tier:** each extra answer resends the question and the retrieved documents, roughly 2,000 to 4,500 tokens. Groq's free tier allows 8,000 tokens per minute per model, shared across your whole organization. When the limit is hit, failed samples are logged as `KLE sample failed` (HTTP 429), and the question is skipped (`KLE skipped`) if fewer than 3 samples succeed. The answer itself is never affected. Keep `KLE_NUM_SAMPLES=3`, use a separate `KLE_SAMPLE_MODEL`, and leave about a minute between test questions.
+
+**Calibrating the threshold:** the default of 0.4 is a starting point, not a tested value. To check that the warning works end to end, set `KLE_THRESHOLD=0.05` temporarily. To calibrate, compare scores with answers you know are right or wrong, and pick the value that best separates them.
+
+More detail on how it works and the code involved: [docs/hallucination-detection.md](./docs/hallucination-detection.md).
+
+## Data
+
+All data lives in the [`data`](./data/) folder. After changing it, restart the containers; new documents are loaded automatically on startup.
+
+### Knowledge base (`knowledgebase.jsonl`)
+
+The documents CIRA answers from. One JSON object per line, with the keys `url`, `content`, `favicon` and `og` (Open Graph metadata such as `og:title`, which is shown as the source title; it can be an empty object `{}`).
+
+<details>
+<summary><b>Example entry</b></summary>
+
+```json
+{
+    "url": "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md",
+    "content": "# Penn State Canvas FAQ\n\n## Getting Started & Access\n\n**Q: How do I log in to Penn State Canvas?**\nA: Go to psu.instructure.com and sign in ...",
+    "og": {
+        "og:title": "Penn State Canvas FAQ",
+        "og:type": "website",
+        "og:url": "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+    },
+    "favicon": "https://github.githubassets.com/favicons/favicon.png"
+}
+```
+
+</details>
+
+### FAQ (`faq.json`)
+
+Questions that should reliably lead to a specific document. Each entry has an `id`, the `question`, and `sources`, a list of knowledge base URLs that answer it. The current FAQ covers Penn State Canvas and points to [`docs/canvas-faq.md`](./docs/canvas-faq.md).
+
+- Every URL in `sources` must exactly match a `url` in the knowledge base, or the FAQ entry is ignored (the backend logs `No parent for faq`).
+- Anything after `#` in a URL is ignored when matching, so an FAQ can point to a whole PDF but not to a single page of it.
+
+<details>
+<summary><b>Example entry</b></summary>
+
+```json
+[
+    {
+        "id": "faq-0000",
+        "question": "How do I log in to Penn State Canvas?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    }
+]
+```
+
+</details>
+
+### Admin users (`admins.json`)
+
+Accounts for the admin interface at https://localhost:8080/admin/login. Passwords are stored as Argon2 hashes; see the [backend instructions](./backend/README.md) for how to create one.
+
+<details>
+<summary><b>Example entry</b></summary>
+
+```json
+[
+    {
+        "username": "admin",
+        "hashed_password": "$argon2id$v=19$m=65536,t=3,p=4$..."
+    }
+]
+```
+
+</details>
+
+## Admin interface
+
+Sign in at **https://localhost:8080/admin/login**.
+
+- **Home:** usage statistics over a selectable time period.
+- **Conversations:** every conversation, with each answer's sources, feedback, hallucination score and sampled answers.
+
+## Development
 
 - [Backend](./backend/README.md)
 - [Frontend](./frontend/README.md)
 - [Scraper](./scraper/README.md)
-- **Docker Deployment:** [Docker](./docs/docker.md)
+- [Docker deployment](./docs/docker.md)
+- [Hallucination detection (KLE)](./docs/hallucination-detection.md)
 
-## User Interface
-<img src="docs/user-interface.png">
+## Credits
 
-1. Welcome and Consent: Displayed on first use to inform and obtain user agreement.
-
-2. Source Attribution: For answerable queries, Marcel displays the list of source documents used.
-
-3. Feedback Mechanism: Users can rate individual responses (thumbs up/down). After three interactions, they can rate the overall conversation.
-
-4. Answer Limitation: Marcel abstains from answering questions not supported by the underlying knowledge base.
-
-## Admin Interface
-<img src="docs/admin-interface.jpg">
-
-  **Top**: A dashboard shows key
-usage statistics over a customizable time period. 
-\
-  **Bottom**: List of conversations with links for manual review.
-
-## Citation
-
-If you found any of these resources useful in your work, please consider citing our paper:
+CIRA is built on **Marcel**, developed at the University of Marburg and released under the MIT license ([repository](https://github.com/aix-group/marcel-chat), [paper](https://aclanthology.org/2025.emnlp-demos.13/)). If you use this work, please also cite the original paper:
 
 ```bibtex
 @inproceedings{trienes-etal-2025-marcel,
@@ -163,9 +237,6 @@ If you found any of these resources useful in your work, please consider citing 
       M{\"u}hling, Markus  and
       Schl{\"o}tterer, J{\"o}rg  and
       Seifert, Christin},
-    editor = {Habernal, Ivan  and
-      Schulam, Peter  and
-      Tiedemann, J{\"o}rg},
     booktitle = "Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
     month = nov,
     year = "2025",
@@ -173,8 +244,18 @@ If you found any of these resources useful in your work, please consider citing 
     publisher = "Association for Computational Linguistics",
     url = "https://aclanthology.org/2025.emnlp-demos.13/",
     doi = "10.18653/v1/2025.emnlp-demos.13",
-    pages = "181--195",
-    ISBN = "979-8-89176-334-0",
-    abstract = "We present Marcel, a lightweight and open-source conversational agent designed to support prospective students with admission-related inquiries. The system aims to provide fast and personalized responses, while reducing workload of university staff. We employ retrieval-augmented generation to ground answers in university resources and to provide users with verifiable, contextually relevant information. We introduce a Frequently Asked Question (FAQ) retriever that maps user questions to knowledge-base entries, which allows administrators to steer retrieval, and improves over standard dense/hybrid retrieval strategies. The system is engineered for easy deployment in resource-constrained academic settings. We detail the system architecture, provide a technical evaluation of its components, and report insights from a real-world deployment."
+    pages = "181--195"
+}
+```
+
+Hallucination detection follows:
+
+```bibtex
+@inproceedings{nikitin2024kernel,
+    title = "Kernel Language Entropy: Fine-grained Uncertainty Quantification for LLMs from Semantic Similarities",
+    author = "Nikitin, Alexander and Kossen, Jannik and Gal, Yarin and Marttinen, Pekka",
+    booktitle = "Advances in Neural Information Processing Systems",
+    year = "2024",
+    url = "https://arxiv.org/abs/2405.20003"
 }
 ```
