@@ -15,3 +15,4 @@ database.db
 *.scrapy
 *cache
 *.pdm-python
+/.vs

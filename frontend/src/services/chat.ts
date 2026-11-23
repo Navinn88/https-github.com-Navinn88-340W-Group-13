@@ -22,6 +22,14 @@ export interface SourceRead {
   favicon: string
 }
 
+export interface UncertaintyRead {
+  method: string
+  entropy: number
+  normalized_entropy: number
+  flagged: boolean
+  num_samples: number
+}
+
 export interface MessageRead {
   id: number
   role: ChatRole
@@ -30,6 +38,7 @@ export interface MessageRead {
   feedback?: MessageFeedback
   created_at: string
   sources: Array<SourceRead>
+  uncertainty?: UncertaintyRead | null
 }
 
 export interface ChatResponseChunk {
@@ -38,6 +47,7 @@ export interface ChatResponseChunk {
   assistant_message?: MessageRead
   content?: string
   non_answer?: boolean
+  uncertainty?: UncertaintyRead
 
   // Returned by API on streaming errors
   error_status_code?: number

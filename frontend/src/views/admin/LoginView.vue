@@ -47,7 +47,7 @@ async function submit() {
         <h2
           class="mt-2 text-center text-2xl/9 font-bold tracking-tight text-gray-900 dark:text-gray-100"
         >
-          Marcel Login
+          CIRA Login
         </h2>
       </div>
 

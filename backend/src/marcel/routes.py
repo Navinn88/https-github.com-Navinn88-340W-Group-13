@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import time
@@ -24,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
 from marcel import __git_commit__, __version__
+from marcel.config import KLE_TIMEOUT
 from marcel.database import get_db, get_db_async
 from marcel.models import (
     Conversation,
@@ -31,6 +33,7 @@ from marcel.models import (
     Message,
     RetrievedDocument,
     SourceRead,
+    UncertaintyEstimate,
     User,
 )
 from marcel.utils.route_preprocessing import detect_non_answer, format_known_links
@@ -58,6 +61,16 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage]
 
 
+class UncertaintyRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    method: str
+    entropy: float
+    normalized_entropy: float
+    flagged: bool
+    num_samples: int
+
+
 class MessageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,6 +81,7 @@ class MessageRead(BaseModel):
     feedback: Optional[str]
     created_at: datetime
     sources: List[SourceRead]
+    uncertainty: Optional[UncertaintyRead] = None
 
 
 class ChatResponseChunk(BaseModel):
@@ -76,6 +90,7 @@ class ChatResponseChunk(BaseModel):
     assistant_message: Optional[MessageRead] = None
     content: Optional[str] = None
     non_answer: Optional[bool] = None
+    uncertainty: Optional[UncertaintyRead] = None
 
     # Once streaming started, the request is marked successfull (i.e., http-status 200).
     # We return the attributes below to alert clients of errors *while* streaming.
@@ -205,6 +220,8 @@ async def query(
         # exclude_unset=True keeps the returned json clean
         return json.dumps(jsonable_encoder(chunk, exclude_unset=True)) + "\n"
 
+    uncertainty_task: Optional[asyncio.Task] = response.get("uncertainty")
+
     async def response_generator():
         try:
             generated_answer = ""
@@ -224,6 +241,14 @@ async def query(
             if formatted_links.strip():
                 yield encode_chunk(ChatResponseChunk(content=f"\n\n{formatted_links}"))
             yield encode_chunk(ChatResponseChunk(non_answer=non_answer_verdict))
+
+            uncertainty = await await_uncertainty(uncertainty_task)
+            if uncertainty is not None:
+                yield encode_chunk(
+                    ChatResponseChunk(
+                        uncertainty=UncertaintyRead.model_validate(uncertainty)
+                    )
+                )
 
             if chat_request.conversation_id:
                 conversation = await get_conversation_db_async(
@@ -245,6 +270,7 @@ async def query(
                 non_answer=non_answer_verdict,
                 e2e_latency=e2e_end - e2e_start,
                 generator_latency=generator_end - generator_start,
+                uncertainty=build_uncertainty_estimate(uncertainty),
             )
             conversation.messages.append(user_log)
             conversation.messages.append(assistant_log)
@@ -277,11 +303,45 @@ async def query(
                 )
             )
         finally:
+            # Don't keep sampling if the client went away or streaming failed.
+            if uncertainty_task is not None and not uncertainty_task.done():
+                uncertainty_task.cancel()
             # Ensure session is properly closed once the generator ends. The call to db.rollback() does nothing if the transaction was already committed. It added as we can't be certain whether or not the current session was dirty (e.g., when catching an exception).
             await db.rollback()
             await db.close()
 
     return StreamingResponse(response_generator())
+
+
+async def await_uncertainty(task: Optional[asyncio.Task]):
+    """Wait for the hallucination score. Never fails the request."""
+    if task is None:
+        return None
+    try:
+        return await asyncio.wait_for(task, timeout=KLE_TIMEOUT)
+    except asyncio.TimeoutError:
+        logger.warning("KLE estimate timed out after %.0fs", KLE_TIMEOUT)
+    except asyncio.CancelledError:
+        current = asyncio.current_task()
+        if current is not None and current.cancelling():
+            raise  # the request itself was cancelled, not just the estimate
+    except Exception:
+        logger.exception("KLE estimate failed")
+    return None
+
+
+def build_uncertainty_estimate(result) -> Optional[UncertaintyEstimate]:
+    if result is None:
+        return None
+    return UncertaintyEstimate(
+        method=result.method,
+        entropy=result.entropy,
+        normalized_entropy=result.normalized_entropy,
+        flagged=result.flagged,
+        num_samples=result.num_samples,
+        samples=json.dumps(result.samples),
+        latency=result.latency,
+    )
 
 
 async def build_retrieved_docs(db: AsyncSession, documents: List[HaystackDocument]):
@@ -395,7 +455,8 @@ def get_conversation(
         .options(
             selectinload(Conversation.messages)
             .selectinload(Message.documents)
-            .selectinload(RetrievedDocument.document)
+            .selectinload(RetrievedDocument.document),
+            selectinload(Conversation.messages).selectinload(Message.uncertainty),
         )
     ).scalar_one_or_none()
 

@@ -10,6 +10,16 @@ export interface Source {
   favicon?: string
 }
 
+export interface Uncertainty {
+  method: string
+  entropy: number
+  normalized_entropy: number // 0 (answers agree) to 1 (answers all disagree)
+  flagged: boolean
+  num_samples: number
+  latency?: number | null
+  sample_list?: Array<string> // only returned by the admin API
+}
+
 export interface Message {
   id?: number
   role: 'user' | 'assistant'
@@ -18,6 +28,7 @@ export interface Message {
   feedback?: MessageFeedback
   created_at?: string // iso date
   sources: Array<Source>
+  uncertainty?: Uncertainty | null
 }
 
 export interface Conversation {

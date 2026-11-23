@@ -17,6 +17,22 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"])
 DATABASE_URI = os.environ.get("DATABASE_URI")
 
 
+def _env(name: str, default: str) -> str:
+    # docker compose passes unset variables as empty strings
+    return os.environ.get(name) or default
+
+
+# Hallucination detection with Kernel Language Entropy (see marcel/uncertainty.py)
+KLE_ENABLED = _env("KLE_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+KLE_NUM_SAMPLES = int(_env("KLE_NUM_SAMPLES", "5"))
+KLE_TEMPERATURE = float(_env("KLE_TEMPERATURE", "1.0"))
+KLE_HEAT_T = float(_env("KLE_HEAT_T", "1.0"))
+KLE_THRESHOLD = float(_env("KLE_THRESHOLD", "0.4"))
+KLE_NLI_MODEL = _env("KLE_NLI_MODEL", "cross-encoder/nli-deberta-v3-small")
+KLE_SAMPLE_MODEL = _env("KLE_SAMPLE_MODEL", MODEL_NAME or "")
+KLE_TIMEOUT = float(_env("KLE_TIMEOUT", "45"))
+
+
 def setup_logging():
     config = {
         "version": 1,

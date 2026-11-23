@@ -10,19 +10,17 @@ import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
       <RouterLink
         :to="{ name: 'home' }"
         :class="'flex text-gray-500 transition-colors duration-200 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white'"
-        ><ArrowLeftIcon class="w-6 h-6 mr-1" />Back to Marcel</RouterLink
+        ><ArrowLeftIcon class="w-6 h-6 mr-1" />Back to CIRA</RouterLink
       >
       <div class="mt-6 prose prose-gray dark:prose-invert lg:prose-base !max-w-none">
-        <h2>Marcel Data Collection and Usage</h2>
+        <h2>CIRA Data Collection and Usage</h2>
         <p>
-          Marcel is part of a research study conducted by Christin Seifert from Marburg University,
-          Germany. The aim of this study is to find out whether a chatbot can improve access to
-          information relevant to prospective or current students at Marburg University. By
-          participating in this study, you will help us to improve students' access to information.
+          This is a chatbot designed to assist canvas users at Penn State with information
+          retrieval.
         </p>
         <h3>Voluntary Participation</h3>
         <p>
-          Interaction with Marcel is completely voluntary, and can be stopped by closing the chatbot
+          Interaction with CIRA is completely voluntary, and can be stopped by closing the chatbot
           window.
         </p>
         <h3>Confidentiality</h3>
@@ -41,18 +39,8 @@ import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
           disseminated in an aggregated manner through academic publications. The data will be
           completely anonymized and we won't be able to trace conversations back to you. There is no
           need to provide any personal information in conversations, such as your name, email or
-          student ID, and we recommend that you do not do so. As part of your interaction with
-          Marcel, we collect following usage data:
+          student ID, and we recommend that you do not do so.
         </p>
-
-        <ul>
-          <li>Randomly generated user ID (stored in a browser cookie and application database)</li>
-          <li>Conversations (i.e., your questions and the chatbot answers)</li>
-          <li>User feedback on individual responses (if applicable)</li>
-          <li>User feedback on conversations (if applicable)</li>
-          <li>Time of interaction</li>
-        </ul>
-
         <p>
           We do not use or process any cookies from third parties. Further data processing including
           access logs (e.g., IP addresses and user agents) follow the data protection standards of
@@ -66,10 +54,14 @@ import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
         <p>
           There are no anticipated risks associated with participation in this study. There is a
           minimal chance of discomfort if the chatbot provides incorrect or unclear information. We
-          always recommend verifying the generated answers through the university website. If you
-          have any doubts regarding a generated answer that concerns your study or study plans,
-          contact official study services of the university. By participating, you will be
-          contributing to research that will improve the chatbot and access to information.
+          always recommend verifying the generated answers through Canvas. If you have any doubts
+          regarding a generated answer that concerns your study or study plans, leave feedback
+          <a
+            href="https://docs.google.com/forms/d/e/1FAIpQLScyrAgqWzKmSIrW32LVW0DKmQv2uA-bVsPvZAWYvVgbg6GFwQ/viewform?usp=publish-editor"
+            target="_blank"
+            >here</a
+          >. By participating, you will be contributing to research that will improve the chatbot
+          and access to information.
         </p>
 
         <h3>Withdrawal of Consent</h3>
@@ -81,21 +73,19 @@ import ArrowLeftIcon from '@/components/icons/ArrowLeftIcon.vue'
 
         <h3>Contact Information</h3>
         <p>
-          If you have any questions about this study or the provided service, please contact
-          Christin Seifert at
-          <a href="mailto:marcel@mathematik.uni-marburg.de">marcel@mathematik.uni-marburg.de</a>.
+          If you have any questions about this study or the provided service, please contact us at
         </p>
-        <p>
-          <strong>Prof. Dr. Christin Seifert</strong>
-          <br />
-          Chair for Artificial Intelligence - Explainable AI
-          <br />
-          Marburg University
-          <br />
-          Hans-Meerwein-Straße 6
-          <br />
-          35032 Marburg
-        </p>
+        <ul>
+          <li>
+            <a href="mailto:tjg311@psu.edu">Tyler Gully</a>
+          </li>
+          <li>
+            <a href="mailto:hab5455@psu.edu">Harvey Barnes</a>
+          </li>
+          <li>
+            <a href="mailto:gld5224@psu.edu">Gavin Dunlap</a>
+          </li>
+        </ul>
       </div>
     </div>
   </div>

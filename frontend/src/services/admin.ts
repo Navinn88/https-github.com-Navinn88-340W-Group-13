@@ -16,6 +16,16 @@ export interface SourceRead {
   favicon: string
 }
 
+export interface UncertaintyRead {
+  method: string
+  entropy: number
+  normalized_entropy: number
+  flagged: boolean
+  num_samples: number
+  latency?: number | null
+  sample_list?: Array<string>
+}
+
 export interface MessageRead {
   id: number
   role: ChatRole
@@ -24,6 +34,7 @@ export interface MessageRead {
   feedback?: MessageFeedback
   created_at: string
   sources: Array<SourceRead>
+  uncertainty?: UncertaintyRead | null
 }
 
 export interface ConversationRead {

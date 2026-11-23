@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID, uuid4
@@ -125,6 +126,9 @@ class Message(Base):
         back_populates="messages", default=None
     )
     documents: Mapped[List["RetrievedDocument"]] = relationship(default_factory=list)
+    uncertainty: Mapped[Optional["UncertaintyEstimate"]] = relationship(
+        back_populates="message", default=None
+    )
 
     @property
     def sources(self) -> List[SourceRead]:
@@ -161,3 +165,40 @@ class RetrievedDocument(Base):
     )
 
     document: Mapped["Document"] = relationship(default=None)
+
+
+class UncertaintyEstimate(Base):
+    """
+    Hallucination score for one assistant message (see marcel/uncertainty.py).
+
+    Kept in its own table so that `Base.metadata.create_all` adds it to existing
+    databases without a migration.
+    """
+
+    __tablename__ = "uncertainty_estimate"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, init=False)
+    method: Mapped[str50] = mapped_column()
+    entropy: Mapped[float] = mapped_column()
+    normalized_entropy: Mapped[float] = mapped_column()
+    flagged: Mapped[bool] = mapped_column()
+    num_samples: Mapped[int] = mapped_column()
+    # JSON-encoded list of the sampled answers, for inspection by admins
+    samples: Mapped[str] = mapped_column(Text, default="[]")
+    latency: Mapped[Optional[float]] = mapped_column(default=None)
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime_now_utc)
+
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("message.id"), unique=True, index=True, init=False
+    )
+    message: Mapped["Message"] = relationship(
+        back_populates="uncertainty", default=None
+    )
+
+    @property
+    def sample_list(self) -> List[str]:
+        try:
+            samples = json.loads(self.samples or "[]")
+        except ValueError:
+            return []
+        return [str(sample) for sample in samples]

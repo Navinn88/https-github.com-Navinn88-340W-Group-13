@@ -277,6 +277,7 @@ def test_get_conversation(test_client, session_factory, mocker, seed_database):
                 "feedback": None,
                 "created_at": mocker.ANY,
                 "sources": [],
+                "uncertainty": None,
             },
             {
                 "id": mocker.ANY,
@@ -299,6 +300,7 @@ def test_get_conversation(test_client, session_factory, mocker, seed_database):
                         "favicon": "",
                     },
                 ],
+                "uncertainty": None,
             },
         ],
     }

@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         - data=data/
+      args:
+        KLE_NLI_MODEL: ${KLE_NLI_MODEL:-cross-encoder/nli-deberta-v3-small}
     restart: always
     depends_on:
       database:
@@ -39,6 +41,14 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL}
       LLM_API_KEY: ${LLM_API_KEY}
       MODEL_NAME: ${MODEL_NAME}
+      KLE_ENABLED: ${KLE_ENABLED:-false}
+      KLE_NUM_SAMPLES: ${KLE_NUM_SAMPLES:-5}
+      KLE_TEMPERATURE: ${KLE_TEMPERATURE:-1.0}
+      KLE_HEAT_T: ${KLE_HEAT_T:-1.0}
+      KLE_THRESHOLD: ${KLE_THRESHOLD:-0.4}
+      KLE_NLI_MODEL: ${KLE_NLI_MODEL:-cross-encoder/nli-deberta-v3-small}
+      KLE_SAMPLE_MODEL: ${KLE_SAMPLE_MODEL:-}
+      KLE_TIMEOUT: ${KLE_TIMEOUT:-45}
       DATABASE_URI: mysql://${MARIADB_USER}:${MARIADB_PASSWORD}@database:3306/${MARIADB_DATABASE}
       HAYSTACK_TELEMETRY_ENABLED: false
     ports:

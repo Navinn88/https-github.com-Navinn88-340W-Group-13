@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List
 
@@ -9,7 +10,20 @@ from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from openai import AsyncOpenAI, OpenAI
 
-from marcel.config import DATA_PATH, FAQ_PATH, LLM_API_KEY, LLM_BASE_URL, MODEL_NAME
+from marcel.config import (
+    DATA_PATH,
+    FAQ_PATH,
+    KLE_ENABLED,
+    KLE_HEAT_T,
+    KLE_NLI_MODEL,
+    KLE_NUM_SAMPLES,
+    KLE_SAMPLE_MODEL,
+    KLE_TEMPERATURE,
+    KLE_THRESHOLD,
+    LLM_API_KEY,
+    LLM_BASE_URL,
+    MODEL_NAME,
+)
 from marcel.experiments import data_loader
 from marcel.experiments.components import ContentLinkNormalizer
 from marcel.experiments.faq_retriever import FAQRetriever
@@ -20,10 +34,10 @@ FAQ_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 logger = logging.getLogger(__name__)
 
 
-system_prompt_general = """You are a helpful and engaging chatbot called Marcel. Your name is Marcel and you are employed at the Marburg University. You help students with questions regarding admission and enrolment to the MSc Data Science Program. Only engage in topics related to admission and enrolment. Do not engage in other discussions."""
+system_prompt_general = """You are a helpful and engaging assistant called CIRA, the Canvas Information Retrieval Assistant. Your name is CIRA. You help students with Canvas and with their courses: finding course and assignment information, and solving navigation and troubleshooting problems in Canvas. Present information in a clear, consistent and easy-to-follow way that suits the individual student. Only engage in topics related to Canvas and the student's courses. Do not engage in other discussions."""
 
 system_prompt_rag = """
-You are a helpful and engaging chatbot called Marcel. If someone asks you, your name is Marcel and you are employed at the Marburg University. You answer questions of students around their studies. Please answer the questions based on the provided documents only. Ignore your own knowledge. Don't say that you are looking at a set of documents. If you cannot find the answer to a given question in the documents you must apologize and say that you don't have any information about the topic (e.g., "Unfortunately, I do not have any knowledge about <rephrase the question>").
+You are a helpful and engaging assistant called CIRA, the Canvas Information Retrieval Assistant. If someone asks you, your name is CIRA. You help students find course and assignment information and solve navigation and troubleshooting problems in Canvas. Please answer the questions based on the provided documents only. Ignore your own knowledge. Don't say that you are looking at a set of documents. Present the answer in a clear, consistent and easy-to-follow style: give the direct answer first, then any steps or details the student needs, and adapt the level of detail to the question. If you cannot find the answer to a given question in the documents you must apologize and say that you don't have any information about the topic (e.g., "Unfortunately, I do not have any knowledge about <rephrase the question>").
 """.strip()
 
 user_prompt_template_rag = """
@@ -97,6 +111,21 @@ class HybridPipeline:
             base_url=LLM_BASE_URL,
         )
         self.retriever.warm_up()
+
+        self.kle = None
+        if KLE_ENABLED:
+            from marcel.uncertainty import CrossEncoderNLI, KLEDetector
+
+            logger.info("init KLE hallucination detector (NLI: %s)", KLE_NLI_MODEL)
+            self.kle = KLEDetector(
+                client=self.generator_async,
+                model=KLE_SAMPLE_MODEL,
+                nli=CrossEncoderNLI(KLE_NLI_MODEL),
+                num_samples=KLE_NUM_SAMPLES,
+                temperature=KLE_TEMPERATURE,
+                heat_t=KLE_HEAT_T,
+                threshold=KLE_THRESHOLD,
+            )
 
     def retrieve(self, query: str, history: List[InputChatMessage]):
         history_messages = [
@@ -183,11 +212,22 @@ class HybridPipeline:
                 for message in retriever_results["prompt_builder"]["prompt"]
             ]
 
-        generator_results = await self.generator_async.chat.completions.create(
-            model=MODEL_NAME,
-            messages=messages,
-            stream=True,
-        )  # type: ignore
+        # Sample extra answers for hallucination detection while the main answer
+        # streams. Chit-chat (no retrieval) is not scored.
+        uncertainty_task = None
+        if self.kle is not None and answer_strategy == "retrieve":
+            uncertainty_task = asyncio.create_task(self.kle.estimate(messages))
+
+        try:
+            generator_results = await self.generator_async.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                stream=True,
+            )  # type: ignore
+        except BaseException:
+            if uncertainty_task is not None:
+                uncertainty_task.cancel()
+            raise
 
         async def chunk_generator():
             async for chunk in generator_results:
@@ -202,6 +242,8 @@ class HybridPipeline:
             if retriever_results
             else [],
             "answer_strategy": answer_strategy,
+            # asyncio.Task resolving to Optional[UncertaintyResult], or None
+            "uncertainty": uncertainty_task,
         }
 
         if debug:

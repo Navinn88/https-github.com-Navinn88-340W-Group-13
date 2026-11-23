@@ -1,33 +1,72 @@
 [
     {
         "id": "faq-0000",
-        "question": "Which Bachelor degree is needed to be admitted to the Masters of Data Science program?",
+        "question": "How do I log in to Penn State Canvas?",
         "sources": [
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/degree-programs/datasciencems",
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/application-for-a-masters-programme/eap/eap-data-science"
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
         ]
     },
     {
         "id": "faq-0001",
-        "question": "Does the Master Data Science have a minimum grade requirement?",
+        "question": "When do my courses become available on the first day of classes?",
         "sources": [
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/degree-programs/datasciencems",
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/application-for-a-masters-programme/eap/eap-data-science"
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
         ]
     },
     {
         "id": "faq-0002",
-        "question": "Which language proficiency is required?",
+        "question": "Is there an official tutorial to learn how Canvas works at Penn State?",
         "sources": [
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/degree-programs/datasciencems",
-            "https://www.uni-marburg.de/en/studying/after-your-first-degree/masters-programs/application-for-a-masters-programme/eap/eap-data-science"
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
         ]
     },
     {
         "id": "faq-0003",
-        "question": "What GPA scale is used?",
+        "question": "Why isn't one of my registered classes showing up on my Canvas Dashboard?",
         "sources": [
-            "https://www.uni-marburg.de/en/fb12/studying/modules-and-courses/glossary"
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    },
+    {
+        "id": "faq-0004",
+        "question": "Where did my courses from previous semesters go?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    },
+    {
+        "id": "faq-0005",
+        "question": "How do I communicate with my instructors and classmates in Canvas?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    },
+    {
+        "id": "faq-0006",
+        "question": "How do I avoid missing assignment deadlines?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    },
+    {
+        "id": "faq-0007",
+        "question": "How is \"attendance\" tracked in online Canvas courses?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    },
+    {
+        "id": "faq-0008",
+        "question": "Do I need special software for proctored exams or third-party tools?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
+        ]
+    },
+    {
+        "id": "faq-0009",
+        "question": "Who do I contact if something in Canvas isn't working?",
+        "sources": [
+            "https://github.com/Navinn88/https-github.com-Navinn88-340W-Group-13/blob/main/docs/canvas-faq.md"
         ]
     }
 ]

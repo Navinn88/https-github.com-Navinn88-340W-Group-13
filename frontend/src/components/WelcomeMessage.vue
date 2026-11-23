@@ -13,7 +13,7 @@
       </div>
     </div>
     <div class="mt-2 mb-5 text-2xl font-semibold text-gray-800 dark:text-gray-200">
-      <div class="line-clamp-1">Hello, this is Marcel.</div>
+      <div class="line-clamp-1">Hello, this is CIRA.</div>
       <div>How can I help you today?</div>
     </div>
   </div>

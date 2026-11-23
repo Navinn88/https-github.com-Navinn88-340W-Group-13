@@ -29,7 +29,7 @@ const commit = __GIT_COMMIT__
   >
     <div class="w-2xl m-6 px-5 py-4 rounded-lg bg-white">
       <div class="flex items-center">
-        <span class="text-gray-800 text-lg">About Marcel</span>
+        <span class="text-gray-800 text-lg">About CIRA</span>
         <button
           type="button"
           class="ml-auto rounded-lg text-sm p-1.5 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 bg-transparent"
@@ -44,34 +44,16 @@ const commit = __GIT_COMMIT__
 
       <div class="text-gray-800">
         <p>
-          Marcel is a chatbot developed at Marburg University. Marcel is a prototype and is
-          constantly being improved. By using Marcel you agree that we can use anonymous
-          conversation data to improve the chatbot. Marcel will not ask you for personal information
-          (name, student ID) and you should not proactively provide it in conversations. For more
-          details please refer to our
-          <RouterLink class="font-medium underline hover:no-underline" :to="{ name: 'privacy' }"
-            >privacy policy</RouterLink
-          >
-          and
-          <a
-            href="https://www.mathematik.uni-marburg.de/legal/datenschutz.html#english"
-            class="font-medium underline hover:no-underline"
-            >legal notice</a
-          >.
+          CIRA is a Retrieval Augmented Generation LLM Canvas assistant with self-evaluation and
+          entropy-based hallucination detection accessible to students that can retrieve relevant
+          course information and present it in a consistent and interpretable style that suits the
+          individual. It is implementable in a university environment that may have limited
+          resources relative to a large technology corporation, but reliably produces accurate and
+          relevant responses, making course and assignment information more readily accessible and
+          reduces the amount of time wasted on simple navigation and troubleshooting. Our rationale
+          is that an interactive assistant can dynamically adapt to the situational needs of the
+          student, which is beyond the capabilities of the Canvas application.
         </p>
-      </div>
-
-      <div class="my-4 flex flex-row items-center gap-6 max-w-full overflow-hidden">
-        <img
-          src="@/assets/umr.svg"
-          alt="Marburg University Logo"
-          class="h-20 w-auto flex-grow flex-shrink min-w-0 object-contain"
-        />
-        <img
-          src="@/assets/tagline.svg"
-          alt="Marcel Marburg Study Support Chatbot Logo"
-          class="h-20 w-auto flex-grow flex-shrink min-w-0 object-contain"
-        />
       </div>
 
       <hr class="h-px my-2 bg-gray-200 border-0" />

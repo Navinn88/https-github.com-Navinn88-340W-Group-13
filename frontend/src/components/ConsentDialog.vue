@@ -55,7 +55,7 @@ async function onDecline() {
       <div class="col-span-2 flex items-center">
         <img class="mr-4 max-w-[28px] max-h-[28px]" :src="assistantImage" />
         <div>
-          <span class="font-bold capitalize dark:text-white">Marcel</span>
+          <span class="font-bold capitalize dark:text-white">CIRA</span>
         </div>
       </div>
 

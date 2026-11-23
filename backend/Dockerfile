@@ -42,5 +42,10 @@ ENV PYTHONPATH="/app/src/"
 
 RUN python -c "from haystack.components.embedders import SentenceTransformersDocumentEmbedder; SentenceTransformersDocumentEmbedder(model='all-MiniLM-L6-v2').warm_up()"
 
+# NLI model for hallucination detection (KLE). The container runs with a read-only
+# filesystem, so the model must be downloaded at build time.
+ARG KLE_NLI_MODEL=cross-encoder/nli-deberta-v3-small
+RUN python -c "import sys; from sentence_transformers import CrossEncoder; CrossEncoder(sys.argv[1])" "$KLE_NLI_MODEL"
+
 EXPOSE 9000
 CMD ["/app/scripts/entrypoint.sh"]

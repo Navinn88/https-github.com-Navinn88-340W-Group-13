@@ -45,7 +45,7 @@ const configs: { [key: string]: ChatMessageConfig } = {
     showTimestamp: false
   },
   assistant: {
-    name: 'Marcel',
+    name: 'CIRA',
     image: assistantImage,
     allowEdit: false,
     allowCopy: true,
@@ -164,7 +164,8 @@ async function sendMessage(message: string) {
 
     let chunksReceived = 0
     await chat(request, (chunk: ChatResponseChunk) => {
-      const { conversation_id, user_message, assistant_message, content, non_answer } = chunk
+      const { conversation_id, user_message, assistant_message, content, non_answer, uncertainty } =
+        chunk
       if (conversation_id) {
         conversation.value.id = conversation_id
       }
@@ -178,10 +179,15 @@ async function sendMessage(message: string) {
         assistantMessage.id = assistant_message.id
         assistantMessage.created_at = assistant_message.created_at
         assistantMessage.sources = assistant_message.sources
+        assistantMessage.uncertainty = assistant_message.uncertainty ?? assistantMessage.uncertainty
       }
 
       if (non_answer) {
         assistantMessage.non_answer = non_answer
+      }
+
+      if (uncertainty) {
+        assistantMessage.uncertainty = uncertainty
       }
 
       if (content?.length) {

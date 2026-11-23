@@ -41,11 +41,11 @@ function toggleNavbar() {
         <img
           src="@/assets/assistant.svg"
           class="h-8 rounded-full border-1 border-white/40"
-          alt="Marcel Logo"
+          alt="CIRA Logo"
         />
         <span
           class="self-center text-2xl font-semibold whitespace-nowrap text-gray-800 dark:text-white"
-          >Marcel Insights</span
+          >CIRA Insights</span
         >
       </RouterLink>
       <div class="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">

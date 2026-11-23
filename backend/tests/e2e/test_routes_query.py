@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 import uuid
@@ -214,6 +215,7 @@ async def test_query(test_client, session_factory_async, mocker):
             "feedback": None,
             "created_at": mocker.ANY,
             "sources": [],
+            "uncertainty": None,
         },
         "assistant_message": {
             "id": mocker.ANY,
@@ -236,6 +238,7 @@ async def test_query(test_client, session_factory_async, mocker):
                     "favicon": "",
                 },
             ],
+            "uncertainty": None,
         },
     }
 
@@ -492,3 +495,111 @@ async def test_query_generator_error(test_client_with_generator_error):
         error_chunk["error_content"]["detail"]
         == "Could not generate response. Please retry."
     )
+
+
+class FakePipelineWithUncertainty(FakePipeline):
+    """Like FakePipeline, but with a hallucination score computed in the background."""
+
+    async def run_async(self, *args, **kwargs):
+        from marcel.uncertainty import UncertaintyResult
+
+        result = await super().run_async(*args, **kwargs)
+
+        async def estimate():
+            return UncertaintyResult(
+                method="kle-heat",
+                entropy=1.2,
+                normalized_entropy=0.75,
+                flagged=True,
+                num_samples=3,
+                samples=["Answer A", "Answer B", "Answer C"],
+                latency=0.5,
+            )
+
+        result["uncertainty"] = asyncio.create_task(estimate())
+        return result
+
+
+class FakePipelineWithFailingUncertainty(FakePipeline):
+    async def run_async(self, *args, **kwargs):
+        result = await super().run_async(*args, **kwargs)
+
+        async def estimate():
+            raise RuntimeError("rate limited")
+
+        result["uncertainty"] = asyncio.create_task(estimate())
+        return result
+
+
+test_client_with_uncertainty = create_test_client(FakePipelineWithUncertainty)
+test_client_with_failing_uncertainty = create_test_client(
+    FakePipelineWithFailingUncertainty
+)
+
+
+async def _stream_query(client, conversation_id=None):
+    client.cookies = {"user_id": str(uuid.uuid4())}
+    payload = {"messages": [{"role": "user", "content": "What are the deadlines?"}]}
+    if conversation_id:
+        payload["conversation_id"] = conversation_id
+    chunks = []
+    async with client.stream("POST", "/query", json=payload) as response:
+        assert response.status_code == 200
+        async for line in response.aiter_lines():
+            if line.strip():
+                chunks.append(json.loads(line))
+    return chunks
+
+
+@pytest.mark.asyncio
+async def test_query_streams_and_stores_uncertainty(
+    test_client_with_uncertainty, session_factory_async
+):
+    async with session_factory_async() as db_session:
+        db_session.add_all([Document(**doc) for doc in raw_documents()])
+        await db_session.commit()
+
+    chunks = await _stream_query(test_client_with_uncertainty)
+
+    assert not any("error_status_code" in chunk for chunk in chunks)
+    uncertainty_chunks = [chunk for chunk in chunks if "uncertainty" in chunk]
+    assert uncertainty_chunks[0]["uncertainty"] == {
+        "method": "kle-heat",
+        "entropy": 1.2,
+        "normalized_entropy": 0.75,
+        "flagged": True,
+        "num_samples": 3,
+    }
+    final = chunks[-1]
+    assert final["assistant_message"]["uncertainty"]["flagged"] is True
+    assert final["user_message"]["uncertainty"] is None
+
+    async with session_factory_async() as db_session:
+        result = await db_session.execute(
+            select(Message)
+            .where(Message.id == final["assistant_message"]["id"])
+            .options(selectinload(Message.uncertainty))
+        )
+        message = result.scalar_one()
+        assert message.uncertainty is not None
+        assert message.uncertainty.flagged is True
+        assert message.uncertainty.normalized_entropy == 0.75
+        assert message.uncertainty.sample_list == ["Answer A", "Answer B", "Answer C"]
+        assert message.uncertainty.latency == 0.5
+
+
+@pytest.mark.asyncio
+async def test_query_survives_failing_uncertainty(
+    test_client_with_failing_uncertainty, session_factory_async
+):
+    async with session_factory_async() as db_session:
+        db_session.add_all([Document(**doc) for doc in raw_documents()])
+        await db_session.commit()
+
+    chunks = await _stream_query(test_client_with_failing_uncertainty)
+
+    assert not any("error_status_code" in chunk for chunk in chunks)
+    assert not any(chunk.get("uncertainty") for chunk in chunks)
+    final = chunks[-1]
+    assert final["assistant_message"]["content"] == "This is a test answer"
+    assert final["assistant_message"]["uncertainty"] is None

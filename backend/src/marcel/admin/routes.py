@@ -33,6 +33,18 @@ from marcel.models import (
 router = APIRouter()
 
 
+class AdminUncertaintyRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    method: str
+    entropy: float
+    normalized_entropy: float
+    flagged: bool
+    num_samples: int
+    latency: Optional[float]
+    sample_list: List[str]
+
+
 class MessageRead(BaseModel):
     id: int
     role: str
@@ -41,6 +53,7 @@ class MessageRead(BaseModel):
     feedback: Optional[str]
     created_at: datetime
     sources: List[SourceRead]
+    uncertainty: Optional[AdminUncertaintyRead] = None
 
 
 class ConversationRead(BaseModel):
@@ -84,7 +97,8 @@ def get_conversation(
         .options(
             selectinload(Conversation.messages)
             .selectinload(Message.documents)
-            .selectinload(RetrievedDocument.document)
+            .selectinload(RetrievedDocument.document),
+            selectinload(Conversation.messages).selectinload(Message.uncertainty),
         )
     ).scalar_one_or_none()
 

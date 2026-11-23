@@ -12,7 +12,13 @@ from marcel.admin.routes import (
     aggregate_time_series,
     generate_aggregation_bins,
 )
-from marcel.models import AdminUser, Conversation, Message, User
+from marcel.models import (
+    AdminUser,
+    Conversation,
+    Message,
+    UncertaintyEstimate,
+    User,
+)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -62,6 +68,48 @@ def test_get_conversation(authenticated_client: TestClient, session_factory):
     assert data["messages"][0]["content"] == "Hello!"
     assert data["messages"][1]["content"] == "How can I help you?"
     assert data["rating"] == 4
+
+
+def test_get_conversation_with_uncertainty(
+    authenticated_client: TestClient, session_factory
+):
+    with session_factory() as db_session:
+        conversation = Conversation(
+            user=User(client_id=uuid.uuid4()),
+            messages=[
+                Message(content="When is the deadline?", role="user"),
+                Message(
+                    content="It is July 15.",
+                    role="assistant",
+                    uncertainty=UncertaintyEstimate(
+                        method="kle-heat",
+                        entropy=1.1,
+                        normalized_entropy=0.7,
+                        flagged=True,
+                        num_samples=2,
+                        samples='["July 15", "June 1"]',
+                        latency=1.5,
+                    ),
+                ),
+            ],
+        )
+        db_session.add(conversation)
+        db_session.commit()
+        conversation_id = conversation.id
+
+    response = authenticated_client.get(f"/admin/conversation/{conversation_id}")
+    assert response.status_code == 200
+    messages = response.json()["messages"]
+    assert messages[0]["uncertainty"] is None
+    assert messages[1]["uncertainty"] == {
+        "method": "kle-heat",
+        "entropy": 1.1,
+        "normalized_entropy": 0.7,
+        "flagged": True,
+        "num_samples": 2,
+        "latency": 1.5,
+        "sample_list": ["July 15", "June 1"],
+    }
 
 
 def test_get_conversation_unauthorized(test_client: TestClient):

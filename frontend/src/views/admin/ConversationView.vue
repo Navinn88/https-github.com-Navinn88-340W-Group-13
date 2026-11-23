@@ -24,12 +24,13 @@ const configs: { [key: string]: ChatMessageConfig } = {
     showTimestamp: true
   },
   assistant: {
-    name: 'Marcel',
+    name: 'CIRA',
     image: assistantImage,
     allowEdit: false,
     allowCopy: true,
     allowRating: true,
-    showTimestamp: true
+    showTimestamp: true,
+    showUncertaintyDetails: true
   }
 }
 
